@@ -10,7 +10,7 @@ from swarm_control_msgs.msg import Info, RBroadcast
 # Parameters for the kinematic model
 # ===========================================
 T_S = 0.05           # Sampling period [s]
-M = 1.0              # Coupling gain
+M = -np.eye(2)       # Coupling gain
 NU = 1.0             # Exponent in denominator
 EPS = 1e-2           # Small epsilon to avoid division by zero
 DELTA_RADIUS = 3.0   # Communication radius (m)
@@ -39,11 +39,13 @@ class KinematicNode(Node):
         if self.bot_id in self.agent_list:
             self.agent_list.remove(self.bot_id)
 
-        self.get_logger().info(f"{self.bot_id}: tracking {len(self.agent_list)} agents -> {self.agent_list}")
+        self.get_logger().info(f"{self.bot_id}: tracking {len(self.agent_list)} agents -> {self.agent_list}")        
 
         # ---------------- State Variables ----------------
         self.pose_dict = {b: None for b in self.agent_list}
-        self.my_pose = np.zeros(2)
+        self.my_pose = None
+        self.component_dict = {b: None for b in self.agent_list}
+        self.my_cid = None
         self.delta = np.zeros(2)
         self.delta_dict = {b: np.zeros(2) for b in self.agent_list}
         self.r_vec = np.zeros(2)   # reference point from r_broadcast
@@ -53,12 +55,14 @@ class KinematicNode(Node):
         self.info_pub = self.create_publisher(Info, f'/{self.bot_id}/info', 10)
 
         # ---------------- Subscribers ----------------
-        # Own Pose
+        # Own Pose and Info
         self.create_subscription(PoseStamped, f'/{self.bot_id}/pose', self.pose_callback, 10)
+        self.create_subscription(Info, f'/{self.bot_id}/info', self.info_callback, 10)
 
         # Other bots' pose and delta
         for bot in self.agent_list:
             self.create_subscription(PoseStamped, f'/{bot}/pose', self.make_pose_cb(bot), 10)
+            self.create_subscription(Info, f'/{bot}/info', self.make_info_cb(bot), 10)
             self.create_subscription(PointStamped, f'/{bot}/delta', self.make_delta_cb(bot), 10)
 
         # Reference broadcast
@@ -71,17 +75,26 @@ class KinematicNode(Node):
     # ===========================================
     # Callbacks
     # ===========================================
-    def pose(self, msg: PoseStamped):
+    def pose_callback(self, msg: PoseStamped):
         self.my_pose = np.array([msg.pose.pose.position.x,
                                  msg.pose.pose.position.y])
+        
+    def info_callback(self, msg: Info):
+        self.my_cid = msg.component_id
 
     def make_pose_cb(self, bot):
         """Closure for storing pose of other bots."""
-        def cb(msg):
-            self.pose_dict[bot] = np.array([msg.pose.pose.position.x,
-                                            msg.pose.pose.position.y])
+        def cb(msg: PoseStamped):
+            self.pose_dict[bot] = np.array([msg.pose.position.x,
+                                            msg.pose.position.y])
         return cb
 
+    def make_info_cb(self, bot):
+        """Closure for storing info of other bots."""
+        def cb(msg: Info):
+            self.component_dict[bot] = msg.component_id
+        return cb
+    
     def make_delta_cb(self, bot):
         """Closure for storing delta of other bots."""
         def cb(msg):
@@ -91,16 +104,19 @@ class KinematicNode(Node):
     def r_cb(self, msg: RBroadcast):
         """Callback for receiving reference trajectory from leader."""
         self.r_vec = np.array([msg.point.x, msg.point.y])
+        self.get_logger().debug(
+            f"{self.bot_id}: Received r_broadcast from {msg.id}: r={self.r_vec}"
+        )
 
-    def compute_neighbors(self):
-        """Return list of neighbors within delta_radius based on poseetry."""
-        neighbors = []
-        for bot, pose in self.pose_dict.items():
-            if pose is not None:
-                dist = np.linalg.norm(self.my_pose - pose)
-                if dist <= self.delta_radius:
-                    neighbors.append(bot)
-        return neighbors
+    # def compute_neighbors(self):
+    #     """Return list of neighbors within delta_radius based on poseetry."""
+    #     neighbors = []
+    #     for bot, pose in self.pose_dict.items():
+    #         if pose is not None:
+    #             dist = np.linalg.norm(self.my_pose - pose)
+    #             if dist <= self.delta_radius:
+    #                 neighbors.append(bot)
+    #     return neighbors
 
     # ===========================================
     # Main periodic update
@@ -109,13 +125,13 @@ class KinematicNode(Node):
         # 1. Compute Δ_i = z_i - r(t)
         self.delta = self.my_pose - self.r_vec
 
-        # 2. Find neighbors in delta radius
-        neighbors = self.compute_neighbors()
-        n_cc = max(1, len(neighbors) + 1)
+        # 2. Find component members
+        component_members = [b for b, cid in self.component_dict.items() if cid == self.my_cid]
+        n_cc = max(1, len(component_members) + 1)
 
         # 3. Compute coupling term
         coupling = np.zeros(2)
-        for nb in neighbors:
+        for nb in component_members:
             diff = self.delta - self.delta_dict[nb]
             denom = np.linalg.norm(diff)**NU + EPS
             coupling += diff / denom
@@ -135,6 +151,7 @@ class KinematicNode(Node):
         info_msg = Info()
         info_msg.id = self.bot_id
         info_msg.role = self.role
+        info_msg.component_id = self.my_cid
         info_msg.stamp = self.get_clock().now().to_msg()
         info_msg.is_active = True
         info_msg.status_msg = "OK"
@@ -142,8 +159,8 @@ class KinematicNode(Node):
 
         # Debug log
         self.get_logger().debug(
-            f"{self.bot_id}: Δ={self.delta.round(3)}, neighbors={neighbors}"
-        )
+            f"{self.bot_id}: Δ={self.delta.round(3)}, comp={self.my_cid}, members={component_members}"
+    )
 
 # ===========================================
 # Node entry point

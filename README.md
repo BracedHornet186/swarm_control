@@ -17,8 +17,7 @@ swarm_control/
 │   ├── graph_observer.py
 │   └── graph_utils.py
 ├── launch/
-│   ├── swarm_launch.py
-│   └── gazebo_world.launch.py
+│   └── swarm_launch.py
 └── README.md
 ```
 

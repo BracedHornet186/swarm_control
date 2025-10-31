@@ -36,7 +36,7 @@ class ReferenceNode(Node):
     def timer_callback(self):
         # Generate r(t)
         t = self.time
-        r_vec = np.array([t, np.sin(t)])
+        r_vec = np.array([t, 3*np.sin(t)])
         self.time += self.dt
 
         # Publish /reference

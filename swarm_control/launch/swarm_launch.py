@@ -66,6 +66,7 @@ def launch_setup(context, *args, **kwargs):
     # Read evaluated values
     use_sim_time = LaunchConfiguration('use_sim_time', default='true').perform(context)
     num_bots = int(LaunchConfiguration('num_bots').perform(context))
+    delta_radius = float(LaunchConfiguration('delta_radius', default=1.5).perform(context))
 
     # Load model and URDF
     TURTLEBOT3_MODEL = 'waffle'
@@ -169,6 +170,45 @@ def launch_setup(context, *args, **kwargs):
         arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
         )
     actions.append(clock_bridge)
+
+    # Graph Observer Nodes
+    graph_node = Node(
+        package='swarm_control',
+        executable='graph_observer.py',
+        name='graph_observer',
+        output='screen',
+        parameters=[{'num_bots': num_bots, 'delta_radius': delta_radius}]
+        )
+    actions.append(graph_node)
+
+    # Reference Node
+    reference_node = Node(
+        package='swarm_control',
+        executable='reference_node.py',
+        name='reference_node',
+        output='screen',
+        parameters=[{'num_bots': num_bots}]
+    )
+    actions.append(reference_node)
+
+    # Kinematic Nodes (one per robot)
+    for i in range(num_bots):
+        bot_id = f'bot{i + 1}'
+        
+        kinematic_node = Node(
+            package='swarm_control',
+            executable='kinematic_node.py',
+            name=f'kinematic_node_{bot_id}',
+            namespace=bot_id,
+            output='screen',
+            parameters=[{
+                'bot_id': bot_id,
+                'num_bots': num_bots,
+                'delta_radius': delta_radius,
+                'role': 'agent'
+            }]
+        )
+        actions.append(kinematic_node)
 
     return actions
 
