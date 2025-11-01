@@ -52,7 +52,6 @@ class KinematicNode(Node):
 
         # ---------------- Publishers ----------------
         self.delta_pub = self.create_publisher(PointStamped, f'/{self.bot_id}/delta', 10)
-        self.info_pub = self.create_publisher(Info, f'/{self.bot_id}/info', 10)
 
         # ---------------- Subscribers ----------------
         # Own Pose and Info
@@ -76,8 +75,8 @@ class KinematicNode(Node):
     # Callbacks
     # ===========================================
     def pose_callback(self, msg: PoseStamped):
-        self.my_pose = np.array([msg.pose.pose.position.x,
-                                 msg.pose.pose.position.y])
+        self.my_pose = np.array([msg.pose.position.x,
+                                 msg.pose.position.y])
         
     def info_callback(self, msg: Info):
         self.my_cid = msg.component_id
@@ -122,6 +121,11 @@ class KinematicNode(Node):
     # Main periodic update
     # ===========================================
     def timer_callback(self):
+        # Skip until both pose and component ID are known
+        if self.my_pose is None or self.my_cid is None:
+            self.get_logger().warning(f"{self.bot_id}: Waiting for pose/component ID...")
+            return
+        
         # 1. Compute Δ_i = z_i - r(t)
         self.delta = self.my_pose - self.r_vec
 
@@ -146,16 +150,6 @@ class KinematicNode(Node):
         delta_msg.header.frame_id = 'world'
         delta_msg.point.x, delta_msg.point.y = self.delta
         self.delta_pub.publish(delta_msg)
-
-        # 6. Publish health/info message
-        info_msg = Info()
-        info_msg.id = self.bot_id
-        info_msg.role = self.role
-        info_msg.component_id = self.my_cid
-        info_msg.stamp = self.get_clock().now().to_msg()
-        info_msg.is_active = True
-        info_msg.status_msg = "OK"
-        self.info_pub.publish(info_msg)
 
         # Debug log
         self.get_logger().debug(

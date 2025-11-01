@@ -39,10 +39,10 @@ class GraphObserver(Node):
     # Pose update callback
     # ------------------------------
     def make_pose_cb(self, bot):
-        def cb(msg):
+        def cb(msg: PoseStamped):
             self.positions[bot] = np.array([
-                msg.pose.pose.position.x,
-                msg.pose.pose.position.y
+                msg.pose.position.x,
+                msg.pose.position.y
             ])
         return cb
 

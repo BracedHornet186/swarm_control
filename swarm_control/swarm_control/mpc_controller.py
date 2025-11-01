@@ -119,11 +119,11 @@ class MPCController(Node):
     def odom_callback(self, msg: Odometry):
         """Update current robot pose and velocity"""
         # Extract position
-        self.current_pose[0] = msg.pose.pose.position.x
-        self.current_pose[1] = msg.pose.pose.position.y
+        self.current_pose[0] = msg.pose.position.x
+        self.current_pose[1] = msg.pose.position.y
         
         # Extract orientation (quaternion to yaw)
-        q = msg.pose.pose.orientation
+        q = msg.pose.orientation
         self.current_pose[2] = np.arctan2(2*(q.w*q.z + q.x*q.y), 1 - 2*(q.y*q.y + q.z*q.z))
         
         # Extract velocity

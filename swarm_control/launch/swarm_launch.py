@@ -88,8 +88,9 @@ def launch_setup(context, *args, **kwargs):
     # Spawn each bot
     for i in range(num_bots):
         namespace = f'bot{i + 1}'
-        x_pose = round(random.uniform(-3.0, 3.0), 2)
-        y_pose = round(random.uniform(-3.0, 3.0), 2)
+        spawn_radius = 10.0
+        x_pose = round(random.uniform(-spawn_radius, spawn_radius), 2)
+        y_pose = round(random.uniform(-spawn_radius, spawn_radius), 2)
 
         patched_sdf = load_sdf_with_namespace(sdf_path, namespace)
 
@@ -171,7 +172,17 @@ def launch_setup(context, *args, **kwargs):
         )
     actions.append(clock_bridge)
 
-    # Graph Observer Nodes
+    # Pose Publisher Node
+    pose_pub_node = Node(
+        package='swarm_control',
+        executable='pose_publisher_node.py',
+        name='pose_publisher_node',
+        output='screen',
+        parameters=[{'num_bots': num_bots}]
+    )
+    actions.append(pose_pub_node)
+
+    # Graph Observer Node
     graph_node = Node(
         package='swarm_control',
         executable='graph_observer.py',

@@ -15,9 +15,9 @@ from threading import Thread
 import time
 
 
-class GazeboPoseRelay(Node):
+class PosePublisherNode(Node):
     def __init__(self):
-        super().__init__('gazebo_pose_relay')
+        super().__init__('pose_publisher_node')
         
         self.declare_parameter('num_bots', None)
         self.num_bots = self.get_parameter('num_bots').get_parameter_value().integer_value
@@ -78,7 +78,7 @@ class GazeboPoseRelay(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = GazeboPoseRelay()
+    node = PosePublisherNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
