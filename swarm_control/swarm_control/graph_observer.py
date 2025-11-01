@@ -11,8 +11,8 @@ class GraphObserver(Node):
         super().__init__('graph_observer')
 
         # ---------- Parameters ----------
-        self.declare_parameter('num_bots', None)
-        self.declare_parameter('delta_radius', 1.5)
+        self.declare_parameter('num_bots', 3)
+        self.declare_parameter('delta_radius', 3.0)
 
         self.num_bots = self.get_parameter('num_bots').get_parameter_value().integer_value
         self.delta_radius = self.get_parameter('delta_radius').get_parameter_value().double_value
@@ -118,13 +118,6 @@ class GraphObserver(Node):
                 info.status_msg = "OK"
                 info.component_id = cid
                 self.info_pubs[bot].publish(info)
-
-        # 5. Log debug summary
-        summary = ", ".join([
-            f"Comp{cid}: {comp} (leader={leaders[cid]})"
-            for cid, comp in enumerate(components)
-        ])
-        self.get_logger().debug(f"Graph: {summary}")
 
 def main(args=None):
     rclpy.init(args=args)

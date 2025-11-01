@@ -19,7 +19,7 @@ class PosePublisherNode(Node):
     def __init__(self):
         super().__init__('pose_publisher_node')
         
-        self.declare_parameter('num_bots', None)
+        self.declare_parameter('num_bots', 3)
         self.num_bots = self.get_parameter('num_bots').get_parameter_value().integer_value
 
         # Dictionary of ROS 2 publishers (one per model)

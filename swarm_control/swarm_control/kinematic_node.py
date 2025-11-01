@@ -20,9 +20,9 @@ class KinematicNode(Node):
         super().__init__('kinematic_node')
 
         # ---------------- Parameters ----------------
-        self.declare_parameter('bot_id', None)
-        self.declare_parameter('num_bots', None)
-        self.declare_parameter('delta_radius', DELTA_RADIUS)
+        self.declare_parameter('bot_id', 'bot1')
+        self.declare_parameter('num_bots', 3)
+        self.declare_parameter('delta_radius', 3.0)
         self.declare_parameter('role', 'agent')
 
         self.bot_id = self.get_parameter('bot_id').get_parameter_value().string_value
@@ -141,7 +141,7 @@ class KinematicNode(Node):
             coupling += diff / denom
 
         # 4. Δ̇ update and Euler integration
-        d_delta = -self.delta - (M / n_cc) * coupling
+        d_delta = -self.delta - (M / n_cc) @ coupling
         self.delta += T_S * d_delta
 
         # 5. Publish updated delta

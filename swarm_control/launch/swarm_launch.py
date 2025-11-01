@@ -66,7 +66,7 @@ def launch_setup(context, *args, **kwargs):
     # Read evaluated values
     use_sim_time = LaunchConfiguration('use_sim_time', default='true').perform(context)
     num_bots = int(LaunchConfiguration('num_bots').perform(context))
-    delta_radius = float(LaunchConfiguration('delta_radius', default=1.5).perform(context))
+    delta_radius = float(LaunchConfiguration('delta_radius', default=3.0).perform(context))
 
     # Load model and URDF
     TURTLEBOT3_MODEL = 'waffle'
@@ -88,7 +88,7 @@ def launch_setup(context, *args, **kwargs):
     # Spawn each bot
     for i in range(num_bots):
         namespace = f'bot{i + 1}'
-        spawn_radius = 10.0
+        spawn_radius = 3.0
         x_pose = round(random.uniform(-spawn_radius, spawn_radius), 2)
         y_pose = round(random.uniform(-spawn_radius, spawn_radius), 2)
 

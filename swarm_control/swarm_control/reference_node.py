@@ -10,7 +10,7 @@ class ReferenceNode(Node):
         super().__init__('reference_node')
 
         # Params
-        self.num_bots = self.declare_parameter('num_bots', None).value
+        self.num_bots = self.declare_parameter('num_bots', 3).value
         self.time = 0.0
         self.dt = 0.05
         self.leaders = set()
@@ -50,7 +50,6 @@ class ReferenceNode(Node):
         for leader_id in self.leaders:
             bmsg = RBroadcast()
             bmsg.id = leader_id
-            bmsg.role = "leader"
             bmsg.stamp = self.get_clock().now().to_msg()
             bmsg.point.x = r_vec[0]
             bmsg.point.y = r_vec[1]
@@ -66,3 +65,6 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
