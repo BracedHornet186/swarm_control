@@ -50,7 +50,7 @@ swarm_control/
 ### 1. `graph_observer.py`
 **Role:** Central node that monitors the swarm graph in real time.
 
-- **Subscribes:** `/bot_i/odom` for all robots  
+- **Subscribes:** `/bot_i/pose` for all robots  
 - **Builds:** adjacency matrix based on Euclidean distance ≤ `delta_radius`  
 - **Finds:** connected components  
 - **Elects:** leader = agent with highest degree in each component  
@@ -67,50 +67,32 @@ swarm_control/
 - **Subscribes:** `/bot_i/info` for leader identification  
 - **Behavior:** Leaders detected by `graph_observer` are used to forward r(t) to their components.
 
+### 3. `pose_publisher_node.py`
+**Role:** Publishes robot poses from gazebo.
+
+- **Publishes:**
+  - `/bot_i/pose` (`geometry_msgs/PoseStamped`)
+- **Subscribes:** `/world/default/pose/info` (`gz.msgs.Pose_V`)
 
 
-### 3. `kinematic_node.py`
+### 4. `kinematic_node.py`
 **Role:** Local agent control node implementing the finite-time kinematic model.
 
 - **Subscribes:**
-  - `/bot_i/odom` (self)
-  - `/bot_j/odom` (others) → determine neighbors  
+  - `/bot_i/pose` (self)
+  - `/bot_j/pose` (others) → determine neighbors  
   - `/bot_j/delta` (others) → get neighbor Δ values  
   - `/r_broadcast` → get current reference r(t)
 - **Publishes:**
   - `/bot_i/delta` (`geometry_msgs/PointStamped`) → agent’s Δ state  
-  - `/bot_i/info` (`Info.msg`) → status broadcast
 - **Computation:**
-  Δ̇ᵢ = -Δᵢ - (M / |𝒩ᵢ|+1) Σⱼ∈𝒩ᵢ [(Δᵢ-Δⱼ)/(‖Δᵢ-Δⱼ‖^ν+ε)]
-  and Euler integration at Tₛ.
 
-
-
-## 🧾 Message Definitions
-
-### **`Info.msg`**
-```msg
-string id
-string role
-builtin_interfaces/Time stamp
-bool is_active
-string status_msg
-int32 component_id
-```
-> Published by `graph_observer` and each `kinematic_node`.  
-> Tracks each robot’s identity, role, and component assignment.
-
-
-
-### **`RBroadcast.msg`**
-```msg
-string id
-builtin_interfaces/Time stamp
-geometry_msgs/Point point
-```
-> Published by `reference.py`.  
-> Contains the reference trajectory point r(t) broadcast by a leader.
-
+  \[
+  \dot{\Delta}_i = -\Delta_i \;-\; 
+  \frac{M}{|\mathcal{N}_i| + 1} 
+  \sum_{j \in \mathcal{N}_i} 
+  \frac{(\Delta_i - \Delta_j)}{\|\Delta_i - \Delta_j\|^{\nu} + \varepsilon}
+  \]
 
 
 ## ⚙️ Parameters
@@ -129,18 +111,19 @@ geometry_msgs/Point point
 ### 1️⃣ Build
 ```bash
 cd ~/ros2_ws
-colcon build --packages-select swarm_control
+colcon build --symlink-install
 source install/setup.bash
 ```
 
 ### 2️⃣ Launch Swarm Control Stack
 ```bash
-ros2 launch swarm_control swarm_launch.py num_bots:=4
+ros2 launch swarm_control swarm_launch.py num_bots:=N
 ```
 
 This will:
 - Spawn N robots in Gazebo  
-- Launch one `kinematic_node.py` per bot  
+- Launch one `kinematic_node.py` per bot 
+- Start `pose_publisher_node.py` 
 - Start `graph_observer.py`  
 - Start `reference.py`
 
@@ -150,7 +133,7 @@ This will:
 
 | Topic | Type | Publisher | Description |
 |--------|------|------------|--------------|
-| `/bot_i/odom` | `nav_msgs/Odometry` | Gazebo | Ground-truth position |
+| `/bot_i/pose` | `geometry_msgs/PoseStamped` | Gazebo | Ground-truth position |
 | `/bot_i/delta` | `geometry_msgs/PointStamped` | kinematic_node | Local Δ(t) state |
 | `/bot_i/info` | `swarm_control/Info` | kinematic_node / graph_observer | Status + role |
 | `/r_broadcast` | `swarm_control/RBroadcast` | reference | Leader’s reference broadcast |
@@ -181,7 +164,6 @@ This will:
 
 - **ROS 2 Jazzy**
 - `geometry_msgs`
-- `nav_msgs`
 - `rclpy`
 - `numpy`
 
@@ -189,5 +171,4 @@ This will:
 
 ## 🧑‍💻 Author & Maintainers
 
-Developed by **Yash Purswani** and **Trisha Wadhwani**
-as part of a decentralized swarm control project for **ME5253: Network Dynamics and Controls** at **IIT Madras**.
+Developed by **Yash Purswani** and **Trisha Wadhwani** as part of a decentralized swarm control project for **ME5253: Network Dynamics and Controls** at **IIT Madras**.
